@@ -47,6 +47,7 @@
             >
               {{ action }}
             </button>
+            <button class="link primary-link" type="button" @click="adjudicate(row)">统一裁决</button>
           </td>
         </tr>
         <tr v-if="!rows.length">
@@ -107,6 +108,28 @@ async function runAction(action: string, row: Row) {
     await reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '日常巡查操作失败'
+  }
+}
+
+async function adjudicate(row: Row) {
+  errorMessage.value = ''
+  try {
+    // 巡查页面对应“后台页面”旧裁决来源；切流命中的班组会自动走编译器
+    const response = await request(`${ENDPOINT}/convention/records/${row.id}/adjudicate`, {
+      method: 'POST',
+      body: JSON.stringify({ source: 'backend', operator: '后台页面' }),
+    })
+    if (!response.ok) {
+      throw new Error('约定裁决未生效，请稍后重试')
+    }
+    const payload = await response.json()
+    const via = payload.applied === 'compiler' ? '约定编译器' : `旧裁决（${payload.source}）`
+    const drift = payload.shadow?.drift ? `；影子比对偏离字段：${Object.keys(payload.shadow.drift).join('、')}` : ''
+    errorMessage.value = ''
+    window.alert(`裁决已回写（${via}，约定水位 ${payload.verdict['约定版本']}）：${payload.verdict['处置建议']}${drift}`)
+    await reload()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '约定裁决失败'
   }
 }
 

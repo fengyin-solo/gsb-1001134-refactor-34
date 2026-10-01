@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.patrol_convention import convention_service
 from app.routers import ROUTERS
 from app.store import store
 
@@ -24,6 +25,9 @@ app.add_middleware(
 
 for module in ROUTERS:
     app.include_router(module.router)
+
+# 登记巡查裁决派生台账的基线快照，供事件重放回到基线后重演
+convention_service.bootstrap()
 
 
 @app.get("/api/health")
