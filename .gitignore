@@ -85,3 +85,6 @@ desktop.ini
 *.db
 *.pid
 *.seed
+
+# 巡查约定编译器本地事件日志
+backend/data/

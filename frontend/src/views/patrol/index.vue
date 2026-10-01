@@ -31,13 +31,23 @@
       <thead>
         <tr>
           <th v-for="column in columns" :key="column">{{ column }}</th>
+          <th>处置建议</th>
+          <th>处置班组</th>
+          <th>约定版本</th>
           <th>可执行动作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
+          <td>
+            <span v-if="row['处置建议']">{{ row['处置建议'] }}（{{ row['处置时限小时'] }}h）</span>
+            <span v-else>—</span>
+          </td>
+          <td>{{ row['处置班组'] || '—' }}</td>
+          <td>{{ row['约定版本'] || '—' }}</td>
           <td class="row-actions">
+            <button class="link" type="button" @click="adjudicate(row)">裁决</button>
             <button
               v-for="action in actions"
               :key="action"
@@ -50,7 +60,7 @@
           </td>
         </tr>
         <tr v-if="!rows.length">
-          <td :colspan="columns.length + 1" class="empty-state">暂无日常巡查数据，可先登记巡查记录</td>
+          <td :colspan="columns.length + 4" class="empty-state">暂无日常巡查数据，可先登记巡查记录</td>
         </tr>
       </tbody>
     </table>
@@ -107,6 +117,24 @@ async function runAction(action: string, row: Row) {
     await reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '日常巡查操作失败'
+  }
+}
+
+async function adjudicate(row: Row) {
+  // 走巡查约定编译器：按发布状态决定权威引擎，结论回写台账/病害清单/车队待办
+  errorMessage.value = ''
+  try {
+    const response = await request(`/api/patrol-compiler/adjudicate/${row.id}`, {
+      method: 'POST',
+      body: JSON.stringify({ values: {}, terminal: row['来源端'] || 'office' }),
+    })
+    const payload = await response.json()
+    if (!payload.ok) {
+      throw new Error(payload.error || '裁决未生效')
+    }
+    await reload()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '巡查裁决失败'
   }
 }
 

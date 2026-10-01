@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Dashboard from '@/views/Dashboard.vue'
 const RoadSection = () => import('@/views/road_section/index.vue')
 const Patrol = () => import('@/views/patrol/index.vue')
+const PatrolCompiler = () => import('@/views/patrol_compiler/index.vue')
 const Pavement = () => import('@/views/pavement/index.vue')
 const Bridge = () => import('@/views/bridge/index.vue')
 const BridgeInfo = () => import('@/views/bridge_info/index.vue')
@@ -26,6 +27,7 @@ const router = createRouter({
     { path: '/', name: 'dashboard', component: Dashboard },
     { path: '/road_section', name: 'road_section', component: RoadSection },
     { path: '/patrol', name: 'patrol', component: Patrol },
+    { path: '/patrol/compiler', name: 'patrol_compiler', component: PatrolCompiler },
     { path: '/pavement', name: 'pavement', component: Pavement },
     { path: '/bridge', name: 'bridge', component: Bridge },
     { path: '/bridge_info', name: 'bridge_info', component: BridgeInfo },

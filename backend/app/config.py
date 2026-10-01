@@ -17,6 +17,8 @@ class Settings:
     )
     page_size_default: int = 20
     page_size_max: int = 200
+    # 巡查约定编译器的 append-only 事件日志；置空则只在内存里运行
+    patrol_event_log: str = "data/patrol_events.jsonl"
 
 
 settings = Settings()

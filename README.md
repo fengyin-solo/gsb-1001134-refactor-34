@@ -68,6 +68,49 @@ npm run dev
 | 养护车辆 | `vehicle` | 养护车辆 | 车辆编号、车辆类型、车牌号 |
 | 养护材料 | `material` | 养护材料 | 材料编号、材料名称、材料类别 |
 
+## 巡查约定编译器
+
+日常巡查问题在手持终端（`legacy_terminal`）、地图图层（`legacy_map`）、后台页面
+（`legacy_office`）原有三套裁决，同一记录换端结论会变。现已收束为「巡查约定编译器」
+（后端代码在 `backend/app/patrol_compiler/`）：
+
+```text
+三端取值信封（中文键/驼峰键/旧信封）
+  -> protocol.normalize_facts 归一化（UNKNOWN 会带 recognized=False）
+  -> conventions 版本化约定（v2026.01 旧版 / v2026.09 现行，带生效日期与 SHA256 指纹）
+  -> compiler 编译（错误一次报全）+ 首条命中规则求值
+  -> 与对应旧端引擎双跑比对偏离
+  -> events append-only JSONL（事件 ID 内容指纹，幂等；批次原子写入，不写半个事件）
+  -> projections 回写：巡查台账（追加裁决字段）、病害清单、车队待办（按来源巡查 upsert）
+```
+
+关键约定：
+
+- **取值协议兼容**：入参接受 `终端问题码/终端严重程度/终端班组`、
+  `图层类型/告警等级`、`发现问题/所属班组` 与驼峰英文键；出参平铺
+  `处置建议/处置时限小时/安全预警/转病害清单/转车队待办/处置班组/约定版本` 等旧协议键。
+- **发布**：`shadow`（影子双跑，权威仍是旧实现，偏离记台账）→ `canary`
+  （`canary_crews` 班组走编译器）→ `full`；`POST /api/patrol-compiler/rollout/fallback`
+  一键切回旧三端实现。
+- **留档与迁移**：存量迁移按 `巡查日期` 选当时生效的约定裁决并冻结（`archived`），
+  事件携带完整约定水位（registry 版本 + 指纹）；冻结记录后续裁决不改写。
+  严格模式下任一条无法识别，整批中止、零事件落库。
+- **重放与比对**：`POST /api/patrol-compiler/replay` 从事件日志幂等重建投影；
+  `POST /api/patrol-compiler/reconcile` 按抽样批次输出逐字段新旧偏离报告。
+- 事件日志默认在 `backend/data/patrol_events.jsonl`，可用环境变量
+  `PATROL_EVENT_LOG` 覆盖，设为 `memory` 时纯内存运行。
+
+前端「巡查裁决控制台」（侧边栏入口 `/patrol/compiler`）可切流、单条裁决、
+整批迁移、跑抽样比对、查看影子偏离与三表回写、触发重放。
+
+后端纯标准库测试（无需安装依赖）：
+
+```bash
+cd backend
+PATROL_EVENT_LOG=memory python3 -m unittest discover -s tests
+PATROL_EVENT_LOG=memory python3 demo_patrol_compiler.py
+```
+
 ## 约定
 
 - 每个模块的前端页面在 `frontend/src/views/<模块>/index.vue`，后端接口在
